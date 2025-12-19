@@ -1,3 +1,4 @@
+#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <EEPROM.h>
@@ -15,13 +16,14 @@
 
 /* ================= SERVER ================= */
 ESP8266WebServer server(80);
+unsigned long lastSend = 0;
 
 /* ================= STRUCT ================= */
 struct Meter {
   volatile uint32_t pulses = 0;
   uint32_t lastPulses = 0;
 
-  float wh_hist[AVG_WINDOW_SEC] = {0};
+  float wh_hist[AVG_WINDOW_SEC] = { 0 };
   uint8_t idx = 0;
 
   float offset = 0;
@@ -33,8 +35,12 @@ struct Meter {
 Meter A, B;
 
 /* ================= ISR ================= */
-ICACHE_RAM_ATTR void isrA() { A.pulses++; }
-ICACHE_RAM_ATTR void isrB() { B.pulses++; }
+ICACHE_RAM_ATTR void isrA() {
+  A.pulses++;
+}
+ICACHE_RAM_ATTR void isrB() {
+  B.pulses++;
+}
 
 /* ================= EEPROM ================= */
 void loadEEPROM() {
@@ -107,15 +113,16 @@ void handleData() {
   float wB = smoothWatts(B, avgWatts(B));
 
   server.send(200, "application/json",
-    "{"
-    "\"A\":{\"w\":" + String(wA,1) + ",\"kwh\":" + String(totalKwh(A),3) + "},"
-    "\"B\":{\"w\":" + String(wB,1) + ",\"kwh\":" + String(totalKwh(B),3) + "}"
-    "}"
-  );
+              "{"
+              "\"A\":{\"w\":"
+                + String(wA, 1) + ",\"kwh\":" + String(totalKwh(A), 3) + "},"
+                                                                         "\"B\":{\"w\":"
+                + String(wB, 1) + ",\"kwh\":" + String(totalKwh(B), 3) + "}"
+                                                                         "}");
 }
 
 void handleResetDynamic() {
-  String uri = server.uri();   // /reset/A/157
+  String uri = server.uri();  // /reset/A/157
   uri.replace("/reset/", "");
 
   int slash = uri.indexOf('/');
@@ -141,7 +148,7 @@ void handleResetDynamic() {
 /* ================= UI ================= */
 void handleUI() {
   server.send(200, "text/html",
-R"rawliteral(
+              R"rawliteral(
 <!DOCTYPE html><html lang="es"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -191,6 +198,19 @@ void handleNotFound() {
   server.send(404, "text/plain", "Not found");
 }
 
+void sendToThingSpeak(float wA, float kwhA, float wB, float kwhB) {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  WiFiClient client;
+  HTTPClient http;
+
+  String url = "http://api.thingspeak.com/update?api_key=" + String(THINGSPEAK_KEY) + "&field1=" + String(wA, 2) + "&field2=" + String(kwhA, 3) + "&field3=" + String(wB, 2) + "&field4=" + String(kwhB, 3);
+
+  http.begin(client, url);  // ✅ API nueva
+  int httpCode = http.GET();
+  http.end();
+}
+
 /* ================= SETUP ================= */
 void setup() {
   Serial.begin(115200);
@@ -217,4 +237,9 @@ void loop() {
   server.handleClient();
   updateMeter(A);
   updateMeter(B);
+
+  if (millis() - lastSend > 15000) {  // 15s
+    lastSend = millis();
+    sendToThingSpeak(avgWatts(A), totalKwh(A), avgWatts(B), totalKwh(B));
+  }
 }
