@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Energy Meter</title>
+
+    // Chart.js CDN
+    <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: #eee;
+            padding: 10px
+        }
+
+        canvas {
+            max-width: 100%
+        }
+
+        .box {
+            margin-bottom: 10px
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Consumo en tiempo real</h2>
+    <canvas id='chart'></canvas>
+
+    <div class='box'>
+        <b>Vivienda A:</b>
+        <span id='wa'>0</span> W |
+        <span id='ka'>0</span> kWh
+    </div>
+
+    <div class='box'>
+        <b>Vivienda B:</b>
+        <span id='wb'>0</span> W |
+        <span id='kb'>0</span> kWh
+    </div>
+
+    <button onclick='reset()'>Reset contadores</button>
+
+    <script>
+        const ctx = document.getElementById('chart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], datasets: [
+                    { label: 'Vivienda A (W)', data: [], borderColor: 'red', tension: 0.2 },
+                    { label: 'Vivienda B (W)', data: [], borderColor: 'cyan', tension: 0.2 }
+                ]
+            },
+            options: {
+                animation: false,
+                scales: { x: { display: false }, y: { beginAtZero: true } }
+            }
+        });
+
+        function update() {
+            fetch('http://192.168.0.24/data').then(r => r.json()).then(d => {
+                const t = new Date().toLocaleTimeString();
+                chart.data.labels.push(t);
+                chart.data.datasets[0].data.push(d.A.w);
+                chart.data.datasets[1].data.push(d.B.w);
+
+                if (chart.data.labels.length > 60) {
+                    chart.data.labels.shift();
+                    chart.data.datasets.forEach(ds => ds.data.shift());
+                }
+
+                chart.update();
+
+                wa.innerText = d.A.w;
+                ka.innerText = d.A.kwh.toFixed(3);
+                wb.innerText = d.B.w;
+                kb.innerText = d.B.kwh.toFixed(3);
+            });
+        }
+
+        function reset() {
+            fetch('http://192.168.0.24/reset', { method: 'POST' }).then(() => alert('Reset OK'));
+        }
+
+        setInterval(update, 1000);
+        update();
+    </script>
+
+</body>
+
+</html>
