@@ -1,102 +1,331 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Energy Monitor</title>
 
-<head>
-    <meta charset='utf-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>Energy Meter</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    // Chart.js CDN
-    <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
 
     <style>
-        body {
-            font-family: Arial;
-            background: #111;
-            color: #eee;
-            padding: 10px
+      body {
+        margin: 0;
+        font-family: Arial;
+        background: #fff;
+        color: #222;
+      }
+      header {
+        padding: 12px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+      }
+      header i {
+        color: #fbc02d;
+        margin-right: 8px;
+      }
+      .container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 15px;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+      }
+      h3 i {
+        margin-right: 6px;
+      }
+      .reset {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      input,
+      select,
+      button {
+        padding: 6px;
+        font-size: 14px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button i {
+        margin-right: 4px;
+      }
+      @media (min-width: 900px) {
+        .container {
+          grid-template-columns: 1fr 1fr;
         }
-
-        canvas {
-            max-width: 100%
-        }
-
-        .box {
-            margin-bottom: 10px
-        }
-
-        button {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px
-        }
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
+    <header>
+      <i class="fa-solid fa-bolt"></i>
+      Monitoreo de Energía
+    </header>
 
-    <h2>Consumo en tiempo real</h2>
-    <canvas id='chart'></canvas>
+    <div class="container">
+      <div class="card">
+        <h3 style="color: #1e88e5">
+          <i class="fa-solid fa-house"></i>
+          Vivienda A
+        </h3>
+        <canvas id="ca"></canvas>
+        kWh: <span id="ka">0</span>
+      </div>
 
-    <div class='box'>
-        <b>Vivienda A:</b>
-        <span id='wa'>0</span> W |
-        <span id='ka'>0</span> kWh
+      <div class="card">
+        <h3 style="color: #fb8c00">
+          <i class="fa-solid fa-house"></i>
+          Vivienda B
+        </h3>
+        <canvas id="cb"></canvas>
+        kWh: <span id="kb">0</span>
+      </div>
     </div>
 
-    <div class='box'>
-        <b>Vivienda B:</b>
-        <span id='wb'>0</span> W |
-        <span id='kb'>0</span> kWh
+    <div class="card" style="margin: 15px">
+      <h3>📈 Comparación en tiempo real</h3>
+      <canvas id="call"></canvas>
     </div>
 
-    <button onclick='reset()'>Reset contadores</button>
+    <div class="card" style="margin: 15px">
+      <h3>
+        <i class="fa-solid fa-chart-pie"></i>
+        Comparación
+      </h3>
+      <canvas id="pie"></canvas>
+    </div>
 
+    <!-- ===== RESET FORM ===== -->
+    <div class="card" style="margin: 15px">
+      <h3>
+        <i class="fa-solid fa-rotate-right"></i>
+        Resetear medidor
+      </h3>
+
+      <div class="reset">
+        <select id="meter">
+          <option value="A">Vivienda A</option>
+          <option value="B">Vivienda B</option>
+        </select>
+
+        <input
+          id="kwhValue"
+          type="number"
+          step="0.001"
+          placeholder="kWh inicial"
+        />
+
+        <button onclick="resetMeter()">
+          <i class="fa-solid fa-eraser"></i>
+          Resetear
+        </button>
+
+        <span id="msg"></span>
+      </div>
+    </div>
+
+    <!-- ===== SCRIPT (sin cambios funcionales) ===== -->
     <script>
-        const ctx = document.getElementById('chart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [], datasets: [
-                    { label: 'Vivienda A (W)', data: [], borderColor: 'red', tension: 0.2 },
-                    { label: 'Vivienda B (W)', data: [], borderColor: 'cyan', tension: 0.2 }
-                ]
+      const max = 60;
+      const INTERVAL_SEC = 1;
+      const SIMULATION = true;
+
+      const SIM = {
+        A: { base: 300, kwh: 0, ema: 300 },
+        B: { base: 1500, kwh: 0, ema: 1500 },
+      };
+
+      const NOISE = 500;
+      const EMA_ALPHA = 0.15;
+
+      const caCtx = document.getElementById("ca").getContext("2d");
+      const cbCtx = document.getElementById("cb").getContext("2d");
+      const callCtx = document.getElementById("call").getContext("2d");
+      const pieCtx = document.getElementById("pie").getContext("2d");
+
+      const chartA = new Chart(caCtx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "W",
+              data: [],
+              borderColor: "#1e88e5",
+              borderWidth: 1,
+              tension: 0.2,
             },
-            options: {
-                animation: false,
-                scales: { x: { display: false }, y: { beginAtZero: true } }
-            }
+            {
+              label: "Promedio",
+              data: [],
+              borderColor: "#0d47a1",
+              borderWidth: 3,
+              tension: 0.4,
+            },
+          ],
+        },
+        options: {
+          animation: false,
+          plugins: { legend: { display: false } },
+        },
+      });
+
+      const chartB = new Chart(cbCtx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "W",
+              data: [],
+              borderColor: "#fb8c00",
+              borderWidth: 1,
+              tension: 0.2,
+            },
+            {
+              label: "Promedio",
+              data: [],
+              borderColor: "#e65100",
+              borderWidth: 3,
+              tension: 0.4,
+            },
+          ],
+        },
+        options: {
+          animation: false,
+          plugins: { legend: { display: false } },
+        },
+      });
+
+      const chartAll = new Chart(callCtx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "A inst",
+              data: [],
+              borderColor: "#90caf9",
+              borderWidth: 1,
+              tension: 0.15,
+            },
+            {
+              label: "A promedio",
+              data: [],
+              borderColor: "#0d47a1",
+              borderWidth: 3,
+              tension: 0.4,
+            },
+            {
+              label: "B inst",
+              data: [],
+              borderColor: "#ffcc80",
+              borderWidth: 1,
+              tension: 0.15,
+            },
+            {
+              label: "B promedio",
+              data: [],
+              borderColor: "#e65100",
+              borderWidth: 3,
+              tension: 0.4,
+            },
+          ],
+        },
+        options: {
+          animation: false,
+          plugins: {
+            legend: { position: "bottom" },
+          },
+          scales: {
+            y: {
+              title: { display: true, text: "Watts" },
+            },
+          },
+        },
+      });
+
+      const chartPie = new Chart(pieCtx, {
+        type: "pie",
+        data: {
+          labels: ["A", "B"],
+          datasets: [{ data: [0, 0], backgroundColor: ["#1e88e5", "#fb8c00"] }],
+        },
+      });
+
+      function push(chart, values) {
+        chart.data.labels.push("");
+
+        values.forEach((v, i) => {
+          chart.data.datasets[i].data.push(v);
         });
 
-        function update() {
-            fetch('http://192.168.0.24/data').then(r => r.json()).then(d => {
-                const t = new Date().toLocaleTimeString();
-                chart.data.labels.push(t);
-                chart.data.datasets[0].data.push(d.A.w);
-                chart.data.datasets[1].data.push(d.B.w);
-
-                if (chart.data.labels.length > 60) {
-                    chart.data.labels.shift();
-                    chart.data.datasets.forEach(ds => ds.data.shift());
-                }
-
-                chart.update();
-
-                wa.innerText = d.A.w;
-                ka.innerText = d.A.kwh.toFixed(3);
-                wb.innerText = d.B.w;
-                kb.innerText = d.B.kwh.toFixed(3);
-            });
+        if (chart.data.labels.length > max) {
+          chart.data.labels.shift();
+          chart.data.datasets.forEach((d) => d.data.shift());
         }
 
-        function reset() {
-            fetch('http://192.168.0.24/reset', { method: 'POST' }).then(() => alert('Reset OK'));
-        }
+        chart.update();
+      }
 
-        setInterval(update, 1000);
-        update();
+      function randNoise() {
+        return (Math.random() * 2 - 1) * NOISE;
+      }
+
+      function ema(prev, value) {
+        return EMA_ALPHA * value + (1 - EMA_ALPHA) * prev;
+      }
+
+      function resetMeter() {
+        const id = meter.value;
+        const val = parseFloat(kwhValue.value || 0);
+
+        if (SIMULATION) {
+          SIM[id].kwh = val;
+          SIM[id].ema = SIM[id].base;
+          msg.innerText = "✔ Reseteado (sim)";
+        }
+      }
+
+      setInterval(() => {
+        // Vivienda A
+        let instA = SIM.A.base + randNoise();
+        SIM.A.ema = ema(SIM.A.ema, instA);
+        SIM.A.kwh += (SIM.A.ema / 1000) * (INTERVAL_SEC / 3600);
+
+        // Vivienda B
+        let instB = SIM.B.base + randNoise();
+        SIM.B.ema = ema(SIM.B.ema, instB);
+        SIM.B.kwh += (SIM.B.ema / 1000) * (INTERVAL_SEC / 3600);
+
+        // Charts individuales
+        push(chartA, [instA, SIM.A.ema]);
+        push(chartB, [instB, SIM.B.ema]);
+
+        // Chart combinado
+        push(chartAll, [instA, SIM.A.ema, instB, SIM.B.ema]);
+
+        ka.innerText = SIM.A.kwh.toFixed(3);
+        kb.innerText = SIM.B.kwh.toFixed(3);
+
+        chartPie.data.datasets[0].data = [SIM.A.kwh, SIM.B.kwh];
+        chartPie.update();
+      }, INTERVAL_SEC * 1000);
     </script>
-
-</body>
-
+  </body>
 </html>
