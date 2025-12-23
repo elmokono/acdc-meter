@@ -148,14 +148,14 @@ void handleData() {
   json += "\"w\":" + String(A.watts, 1) + ",";
   json += "\"avg\":" + String(A.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(A), 3) + ",";
-  json += "\"pulses\":" + String(pA, 3);
+  json += "\"pulses\":" + String(pA);
   json += "},";
 
   json += "\"B\":{";
   json += "\"w\":" + String(B.watts, 1) + ",";
   json += "\"avg\":" + String(B.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(B), 3) + ",";
-  json += "\"pulses\":" + String(pB, 3);
+  json += "\"pulses\":" + String(pB);
   json += "}";
 
   json += "}";
@@ -199,10 +199,10 @@ void sendThingSpeak() {
     + String(THINGSPEAK_KEY)
     + "&field1=" + String(A.watts, 1)
     + "&field2=" + String(totalKwh(A), 3)
-    + "&field3=" + String(A.pulses, 3)
+    + "&field3=" + String(A.pulses)
     + "&field4=" + String(B.watts, 1)
     + "&field5=" + String(totalKwh(B), 3)
-    + "&field6=" + String(B.pulses, 3);
+    + "&field6=" + String(B.pulses);
 
   http.begin(client, url);
   http.GET();
