@@ -14,7 +14,7 @@
 
 #define PULSES_PER_KWH 2000.0
 #define WH_PER_PULSE (1000.0 / PULSES_PER_KWH)
-#define MIN_PULSE_US 50'000  // 50 ms
+#define MIN_PULSE_MS 150
 
 #define SEND_INTERVAL_MS 15000
 #define EEPROM_SIZE 64
@@ -41,29 +41,23 @@ ESP8266HTTPUpdateServer httpUpdater;
 unsigned long lastSend = 0;
 
 // ---------------- Pulse debounce filter ----------------
-// Evita contar pulsos espurios de menos de MIN_PULSE_US microsegundos.
-volatile unsigned long lastPulseTimeA = 0;
-volatile unsigned long lastPulseTimeB = 0;
-
-// Ajustá este valor según tu sensor/ruido. Con 2000 pulsos/kWh,
-// pulsos reales están separados por muchos cientos de ms como mínimo.
-// 50 000 us = 50 ms
-#define MIN_PULSE_US 50000
+volatile unsigned long lastPulseMsA = 0;
+volatile unsigned long lastPulseMsB = 0;
 
 /* ================= ISR ================= */
 ICACHE_RAM_ATTR void isrA() {
-  unsigned long now = micros();
-  if (now - lastPulseTimeA > MIN_PULSE_US) {
+  unsigned long now = millis();
+  if (now - lastPulseMsA >= MIN_PULSE_MS) {
     A.pulses++;
-    lastPulseTimeA = now;
+    lastPulseMsA = now;
   }
 }
 
 ICACHE_RAM_ATTR void isrB() {
-  unsigned long now = micros();
-  if (now - lastPulseTimeB > MIN_PULSE_US) {
+  unsigned long now = millis();
+  if (now - lastPulseMsB >= MIN_PULSE_MS) {
     B.pulses++;
-    lastPulseTimeB = now;
+    lastPulseMsB = now;
   }
 }
 
