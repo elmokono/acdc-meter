@@ -115,6 +115,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
   <div class="card" style="margin: 15px">
     <h3>
+        <i class="fa-solid fa-wave-square"></i>
+        Pulsos A vs B
+    </h3>
+    <canvas id="cpulses"></canvas>
+  </div>
+
+  <div class="card" style="margin: 15px">
+    <h3>
       <i class="fa-solid fa-chart-pie"></i>
       Comparación
     </h3>
@@ -154,6 +162,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     const caCtx = document.getElementById("ca").getContext("2d");
     const cbCtx = document.getElementById("cb").getContext("2d");
     const callCtx = document.getElementById("call").getContext("2d");
+    const pulsesCtx = document.getElementById("cpulses").getContext("2d");
     const pieCtx = document.getElementById("pie").getContext("2d");
 
     // ================= CHART A =================
@@ -201,6 +210,44 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       },
     });
 
+    // ================= CHART PULSES =================
+    const chartPulses = new Chart(pulsesCtx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [
+        {
+            label: "Pulses A",
+            data: [],
+            borderColor: "#1e88e5",
+            borderWidth: 2,
+            tension: 0.2,
+        },
+        {
+            label: "Pulses B",
+            data: [],
+            borderColor: "#fb8c00",
+            borderWidth: 2,
+            tension: 0.2,
+        }
+        ],
+    },
+    options: {
+        animation: false,
+        plugins: {
+        legend: { position: "bottom" },
+        },
+        scales: {
+        y: {
+            title: {
+            display: true,
+            text: "Pulsos",
+            },
+        },
+        },
+    },
+    });
+
     // ================= PIE =================
     const chartPie = new Chart(pieCtx, {
       type: "pie",
@@ -245,10 +292,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         // ---- Charts individuales ----
         push(chartA, [d.A.w, d.A.avg]);
         push(chartB, [d.B.w, d.B.avg]);
-
+        
         // ---- Chart combinado ----
         push(chartAll, [d.A.w, d.A.avg, d.B.w, d.B.avg]);
 
+        // ---- Chart pulses ----
+        push(chartPulses, [d.A.pulses, d.B.pulses]);
+        
         // ---- kWh ----
         ka.innerText = d.A.kwh.toFixed(3);
         kb.innerText = d.B.kwh.toFixed(3);

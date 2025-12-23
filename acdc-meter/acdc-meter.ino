@@ -107,14 +107,14 @@ void handleData() {
   json += "\"A\":{";
   json += "\"w\":" + String(A.watts, 1) + ",";
   json += "\"avg\":" + String(A.avgWatts, 1) + ",";
-  json += "\"kwh\":" + String(totalKwh(A), 3);
+  json += "\"kwh\":" + String(totalKwh(A), 3) + ",";
   json += "\"pulses\":" + String(A.pulses, 3);
   json += "},";
 
   json += "\"B\":{";
   json += "\"w\":" + String(B.watts, 1) + ",";
   json += "\"avg\":" + String(B.avgWatts, 1) + ",";
-  json += "\"kwh\":" + String(totalKwh(B), 3);
+  json += "\"kwh\":" + String(totalKwh(B), 3) + ",";
   json += "\"pulses\":" + String(B.pulses, 3);
   json += "}";
 
