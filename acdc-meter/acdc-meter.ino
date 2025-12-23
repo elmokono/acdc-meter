@@ -91,8 +91,13 @@ void updateMeter(Meter &m) {
   unsigned long now = millis();
   if (now - m.lastCalc < 1000) return;
 
-  uint32_t diff = m.pulses - m.lastPulses;
-  m.lastPulses = m.pulses;
+  uint32_t current;
+  noInterrupts();
+  current = m.pulses;
+  interrupts();
+
+  uint32_t diff = current - m.lastPulses;
+  m.lastPulses = current;
 
   float wh = diff * WH_PER_PULSE;
   m.watts = wh * 3600.0;
@@ -132,18 +137,24 @@ void resetPulses(Meter &m, uint32_t newPulses) {
 void handleData() {
   String json = "{";
 
+  uint32_t pA, pB;
+  noInterrupts();
+  pA = A.pulses;
+  pB = B.pulses;
+  interrupts();
+
   json += "\"A\":{";
   json += "\"w\":" + String(A.watts, 1) + ",";
   json += "\"avg\":" + String(A.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(A), 3) + ",";
-  json += "\"pulses\":" + String(A.pulses, 3);
+  json += "\"pulses\":" + String(pA, 3);
   json += "},";
 
   json += "\"B\":{";
   json += "\"w\":" + String(B.watts, 1) + ",";
   json += "\"avg\":" + String(B.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(B), 3) + ",";
-  json += "\"pulses\":" + String(B.pulses, 3);
+  json += "\"pulses\":" + String(pB, 3);
   json += "}";
 
   json += "}";
