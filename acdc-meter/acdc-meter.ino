@@ -100,6 +100,14 @@ void resetMeter(Meter &m, float newKwh) {
   saveEEPROM();
 }
 
+void resetPulses(Meter &m, uint32_t newPulses) {
+  noInterrupts();
+  m.pulses = newPulses;
+  m.lastPulses = newPulses;
+  interrupts();
+  saveEEPROM();
+}
+
 /* ================= API ================= */
 void handleData() {
   String json = "{";
@@ -132,9 +140,17 @@ void handleReset() {
   String id = uri.substring(0, s);
   float val = uri.substring(s + 1).toFloat();
 
-  if (id == "A") resetMeter(A, val);
-  else if (id == "B") resetMeter(B, val);
-  else return server.send(404, "text/plain", "Meter not found");
+  if (id == "A") {
+    resetMeter(A, val);
+  } else if (id == "B") {
+    resetMeter(B, val);
+  } else if (id == "PA") {
+    resetPulses(A, (uint32_t)val);
+  } else if (id == "PB") {
+    resetPulses(B, (uint32_t)val);
+  } else {
+    return server.send(404, "text/plain", "Meter not found");
+  }
 
   server.send(200, "text/plain", "OK");
 }
