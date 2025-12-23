@@ -26,7 +26,8 @@ struct Meter {
 
   float offsetKwh;
   float watts;
-  float avgWatts;  // <-- NUEVO
+  float avgWatts;
+  bool avgInit;
 
   unsigned long lastCalc;
 };
@@ -343,8 +344,12 @@ void updateMeter(Meter &m) {
   float wh = diff * WH_PER_PULSE;
   m.watts = wh * 3600.0;
 
-  if (m.avgWatts == 0) m.avgWatts = m.watts;
-  else m.avgWatts = EMA_ALPHA * m.watts + (1 - EMA_ALPHA) * m.avgWatts;
+  if (!m.avgInit) {
+    m.avgWatts = m.watts;
+    m.avgInit = true;
+  } else {
+    m.avgWatts = EMA_ALPHA * m.watts + (1.0 - EMA_ALPHA) * m.avgWatts;
+  }
 
   m.lastCalc = now;
 }
@@ -435,6 +440,8 @@ void setup() {
   B.lastCalc = millis();
   A.avgWatts = 0;
   B.avgWatts = 0;
+  A.avgInit = false;
+  B.avgInit = false;
 
   pinMode(PIN_A, INPUT_PULLUP);
   pinMode(PIN_B, INPUT_PULLUP);
@@ -460,7 +467,7 @@ void setup() {
 
   httpUpdater.setup(&server, "/update");
 
-  server.begin();  
+  server.begin();
 }
 
 /* ================= LOOP ================= */
