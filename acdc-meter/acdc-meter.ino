@@ -67,6 +67,13 @@ ICACHE_RAM_ATTR void isrB() {
   }
 }
 
+uint32_t getPulsesSafe(Meter &m) {
+  noInterrupts();
+  uint32_t p = m.pulses;
+  interrupts();
+  return p;
+}
+
 /* ================= EEPROM ================= */
 void loadEEPROM() {
   EEPROM.get(0, A.pulses);
@@ -79,8 +86,10 @@ void loadEEPROM() {
 }
 
 void saveEEPROM() {
-  EEPROM.put(0, A.pulses);
-  EEPROM.put(4, B.pulses);
+  uint32_t pA = getPulsesSafe(A);
+  uint32_t pB = getPulsesSafe(B);
+  EEPROM.put(0, pA);
+  EEPROM.put(4, pB);
   EEPROM.put(8, A.offsetKwh);
   EEPROM.put(12, B.offsetKwh);
   EEPROM.commit();
@@ -91,13 +100,10 @@ void updateMeter(Meter &m) {
   unsigned long now = millis();
   if (now - m.lastCalc < 1000) return;
 
-  uint32_t current;
-  noInterrupts();
-  current = m.pulses;
-  interrupts();
+  uint32_t pulsesNow = getPulsesSafe(m);
 
-  uint32_t diff = current - m.lastPulses;
-  m.lastPulses = current;
+  uint32_t diff = pulsesNow - m.lastPulses;
+  m.lastPulses = pulsesNow;
 
   float wh = diff * WH_PER_PULSE;
   m.watts = wh * 3600.0;
@@ -113,7 +119,8 @@ void updateMeter(Meter &m) {
 }
 
 float totalKwh(Meter &m) {
-  return (m.pulses * WH_PER_PULSE) / 1000.0 + m.offsetKwh;
+  uint32_t p = getPulsesSafe(m);
+  return (p * WH_PER_PULSE) / 1000.0 + m.offsetKwh;
 }
 
 void resetMeter(Meter &m, float newKwh) {
