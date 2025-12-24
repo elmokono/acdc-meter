@@ -14,7 +14,6 @@
 
 #define PULSES_PER_KWH 2000.0
 #define WH_PER_PULSE (1000.0 / PULSES_PER_KWH)
-#define MIN_PULSE_MS 150
 
 #define SEND_INTERVAL_MS 15000
 #define EEPROM_SIZE 64
@@ -22,6 +21,12 @@
 #define EMA_ALPHA 0.2
 
 /* ================= STRUCT ================= */
+struct PersistedData {
+  uint32_t pulsesA;
+  uint32_t pulsesB;
+  float offsetKwhA;
+  float offsetKwhB;
+};
 struct Meter {
   volatile uint32_t pulses;
   uint32_t lastPulses;
@@ -39,26 +44,15 @@ Meter A, B;
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 unsigned long lastSend = 0;
-
-// ---------------- Pulse debounce filter ----------------
-volatile unsigned long lastPulseMsA = 0;
-volatile unsigned long lastPulseMsB = 0;
+PersistedData eep;
 
 /* ================= ISR ================= */
 ICACHE_RAM_ATTR void isrA() {
-  unsigned long now = millis();
-  if (now - lastPulseMsA >= MIN_PULSE_MS) {
-    A.pulses++;
-    lastPulseMsA = now;
-  }
+  A.pulses++;
 }
 
 ICACHE_RAM_ATTR void isrB() {
-  unsigned long now = millis();
-  if (now - lastPulseMsB >= MIN_PULSE_MS) {
-    B.pulses++;
-    lastPulseMsB = now;
-  }
+  B.pulses++;
 }
 
 uint32_t getPulsesSafe(Meter &m) {
@@ -70,22 +64,27 @@ uint32_t getPulsesSafe(Meter &m) {
 
 /* ================= EEPROM ================= */
 void loadEEPROM() {
-  EEPROM.get(0, A.pulses);
-  EEPROM.get(4, B.pulses);
-  EEPROM.get(8, A.offsetKwh);
-  EEPROM.get(12, B.offsetKwh);
+  EEPROM.get(0, eep);
+  noInterrupts();
+  A.pulses = eep.pulsesA;
+  A.offsetKwh = eep.offsetKwhA;
+  B.pulses = eep.pulsesB;
+  B.offsetKwh = eep.offsetKwhB;
+  interrupts();
 
   if (isnan(A.offsetKwh)) A.offsetKwh = 0;
   if (isnan(B.offsetKwh)) B.offsetKwh = 0;
 }
 
 void saveEEPROM() {
-  uint32_t pA = getPulsesSafe(A);
-  uint32_t pB = getPulsesSafe(B);
-  EEPROM.put(0, pA);
-  EEPROM.put(4, pB);
-  EEPROM.put(8, A.offsetKwh);
-  EEPROM.put(12, B.offsetKwh);
+  noInterrupts();
+  eep.pulsesA = A.pulses;
+  eep.offsetKwhA = A.offsetKwh;
+  eep.pulsesB = B.pulses;
+  eep.offsetKwhB = B.offsetKwh;
+  interrupts();
+
+  EEPROM.put(0, eep);
   EEPROM.commit();
 }
 
