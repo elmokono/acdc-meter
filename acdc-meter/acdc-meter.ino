@@ -14,14 +14,27 @@
 
 #define PULSES_PER_KWH 2000.0
 #define WH_PER_PULSE (1000.0 / PULSES_PER_KWH)
-#define MIN_PULSE_MS 150
+#define WATTS_WINDOW_MS 10000UL  // 10 segundos ventana
 
 #define SEND_INTERVAL_MS 15000
 #define EEPROM_SIZE 64
 
 #define EMA_ALPHA 0.2
 
+unsigned long lastWattsWindowMs = 0;
+uint32_t prevPulsesA_win = 0;
+uint32_t prevPulsesB_win = 0;
+
+float wattsWindowA = 0;
+float wattsWindowB = 0;
+
 /* ================= STRUCT ================= */
+struct PersistedData {
+  uint32_t pulsesA;
+  uint32_t pulsesB;
+  float offsetKwhA;
+  float offsetKwhB;
+};
 struct Meter {
   volatile uint32_t pulses;
   uint32_t lastPulses;
@@ -39,26 +52,15 @@ Meter A, B;
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 unsigned long lastSend = 0;
-
-// ---------------- Pulse debounce filter ----------------
-volatile unsigned long lastPulseMsA = 0;
-volatile unsigned long lastPulseMsB = 0;
+PersistedData eep;
 
 /* ================= ISR ================= */
 ICACHE_RAM_ATTR void isrA() {
-  unsigned long now = millis();
-  if (now - lastPulseMsA >= MIN_PULSE_MS) {
-    A.pulses++;
-    lastPulseMsA = now;
-  }
+  A.pulses++;
 }
 
 ICACHE_RAM_ATTR void isrB() {
-  unsigned long now = millis();
-  if (now - lastPulseMsB >= MIN_PULSE_MS) {
-    B.pulses++;
-    lastPulseMsB = now;
-  }
+  B.pulses++;
 }
 
 uint32_t getPulsesSafe(Meter &m) {
@@ -70,22 +72,27 @@ uint32_t getPulsesSafe(Meter &m) {
 
 /* ================= EEPROM ================= */
 void loadEEPROM() {
-  EEPROM.get(0, A.pulses);
-  EEPROM.get(4, B.pulses);
-  EEPROM.get(8, A.offsetKwh);
-  EEPROM.get(12, B.offsetKwh);
+  EEPROM.get(0, eep);
+  noInterrupts();
+  A.pulses = eep.pulsesA;
+  A.offsetKwh = eep.offsetKwhA;
+  B.pulses = eep.pulsesB;
+  B.offsetKwh = eep.offsetKwhB;
+  interrupts();
 
   if (isnan(A.offsetKwh)) A.offsetKwh = 0;
   if (isnan(B.offsetKwh)) B.offsetKwh = 0;
 }
 
 void saveEEPROM() {
-  uint32_t pA = getPulsesSafe(A);
-  uint32_t pB = getPulsesSafe(B);
-  EEPROM.put(0, pA);
-  EEPROM.put(4, pB);
-  EEPROM.put(8, A.offsetKwh);
-  EEPROM.put(12, B.offsetKwh);
+  noInterrupts();
+  eep.pulsesA = A.pulses;
+  eep.offsetKwhA = A.offsetKwh;
+  eep.pulsesB = B.pulses;
+  eep.offsetKwhB = B.offsetKwh;
+  interrupts();
+
+  EEPROM.put(0, eep);
   EEPROM.commit();
 }
 
@@ -138,21 +145,24 @@ void resetPulses(Meter &m, uint32_t newPulses) {
 void handleData() {
   String json = "{";
 
-  uint32_t pA, pB;
-  noInterrupts();
-  pA = A.pulses;
-  pB = B.pulses;
-  interrupts();
+  uint32_t pA = getPulsesSafe(A);
+  uint32_t pB = getPulsesSafe(B);
 
+  // Opcional: timestamp UTC (segundos desde epoch)
+  unsigned long ts = millis() / 1000;
+
+  json += "\"ts\":" + String(ts) + ",";
   json += "\"A\":{";
-  json += "\"w\":" + String(A.watts, 1) + ",";
+  json += "\"w_inst\":" + String(A.watts, 1) + ",";
+  json += "\"w_win\":" + String(wattsWindowA, 1) + ",";
   json += "\"avg\":" + String(A.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(A), 3) + ",";
   json += "\"pulses\":" + String(pA);
   json += "},";
 
   json += "\"B\":{";
-  json += "\"w\":" + String(B.watts, 1) + ",";
+  json += "\"w_inst\":" + String(B.watts, 1) + ",";
+  json += "\"w_win\":" + String(wattsWindowB, 1) + ",";
   json += "\"avg\":" + String(B.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(B), 3) + ",";
   json += "\"pulses\":" + String(pB);
@@ -160,8 +170,12 @@ void handleData() {
 
   json += "}";
 
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
   server.send(200, "application/json", json);
 }
+
 
 void handleReset() {
   String uri = server.uri();  // /reset/A/12.3
@@ -244,8 +258,18 @@ void setup() {
 
   server.on("/data", handleData);
   server.onNotFound([]() {
-    if (server.uri().startsWith("/reset/")) handleReset();
-    else server.send(404, "text/plain", "Not found");
+    if (server.method() == HTTP_OPTIONS) {
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.sendHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+      server.send(204);
+    } else {
+      if (server.uri().startsWith("/reset/")) {
+        handleReset();
+      } else {
+        server.send(404, "text/plain", "Not found");
+      }
+    }
   });
 
   httpUpdater.setup(&server, "/update");
@@ -260,6 +284,31 @@ void loop() {
 
   updateMeter(A);
   updateMeter(B);
+
+  // ---- Ventana de cálculo de potencia ----
+  unsigned long nowMs = millis();
+  if (nowMs - lastWattsWindowMs >= WATTS_WINDOW_MS) {
+
+    // Lee pulsos de forma segura
+    uint32_t pA = getPulsesSafe(A);
+    uint32_t pB = getPulsesSafe(B);
+
+    // Diferencial de pulsos en la ventana
+    uint32_t dpA = pA - prevPulsesA_win;
+    uint32_t dpB = pB - prevPulsesB_win;
+
+    prevPulsesA_win = pA;
+    prevPulsesB_win = pB;
+
+    // Tiempo en segundos
+    float T = (nowMs - lastWattsWindowMs) / 1000.0;
+
+    // Watts por ventana: W = pulses * (1800 / T)
+    wattsWindowA = dpA * (1800.0 / T);
+    wattsWindowB = dpB * (1800.0 / T);
+
+    lastWattsWindowMs = nowMs;
+  }
 
   if (millis() - lastSend >= SEND_INTERVAL_MS) {
     lastSend = millis();
