@@ -26,5 +26,12 @@ This is also linked to Thingspeak charts for long term analysis \
 \
 You can reset the counters to match what you have in your official AC meter
 
+Improvements:
+
+- Total power usage
+- Monthly projection
+- Include Thingspeak charts
+- Push alerts to phone/alexa
+- App for Phone/TV (in my case Tizen)
 
 ![alt text](sample.png)
