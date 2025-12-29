@@ -19,7 +19,11 @@
 #define SEND_INTERVAL_MS 15000
 #define EEPROM_SIZE 64
 
-#define EMA_ALPHA 0.2
+#define EMA_ALPHA_MIN 0.05  // (consumo bajo → muy suave)
+#define EMA_ALPHA_MAX 0.35  // (consumo alto → más reactivo)
+
+#define EMA_WATTS_LOW 200.0     // (debajo de esto → alpha mínimo)
+#define EMA_WATTS_HIGH 3000.0  // (encima de esto → alpha máximo)
 
 unsigned long lastWattsWindowMs = 0;
 uint32_t prevPulsesA_win = 0;
@@ -43,6 +47,7 @@ struct Meter {
   float watts;
   float avgWatts;
   bool avgInit;
+  float emaAlpha;  // (alpha dinámico actual)
 
   unsigned long lastCalc;
 };
@@ -70,6 +75,14 @@ uint32_t getPulsesSafe(Meter &m) {
   return p;
 }
 
+float computeDynamicAlpha(float watts) {  // 🔽 NUEVO
+  if (watts <= EMA_WATTS_LOW) return EMA_ALPHA_MIN;
+  if (watts >= EMA_WATTS_HIGH) return EMA_ALPHA_MAX;
+
+  float ratio = (watts - EMA_WATTS_LOW) / (EMA_WATTS_HIGH - EMA_WATTS_LOW);
+
+  return EMA_ALPHA_MIN + ratio * (EMA_ALPHA_MAX - EMA_ALPHA_MIN);
+}
 /* ================= EEPROM ================= */
 void loadEEPROM() {
   EEPROM.get(0, eep);
@@ -113,7 +126,9 @@ void updateMeter(Meter &m) {
     m.avgWatts = m.watts;
     m.avgInit = true;
   } else {
-    m.avgWatts = EMA_ALPHA * m.watts + (1.0 - EMA_ALPHA) * m.avgWatts;
+    //m.avgWatts = EMA_ALPHA * m.watts + (1.0 - EMA_ALPHA) * m.avgWatts;
+    m.emaAlpha = computeDynamicAlpha(m.watts);
+    m.avgWatts = m.avgWatts + m.emaAlpha * (m.watts - m.avgWatts);
   }
 
   m.lastCalc = now;
@@ -157,6 +172,7 @@ void handleData() {
   json += "\"w_win\":" + String(wattsWindowA, 1) + ",";
   json += "\"avg\":" + String(A.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(A), 3) + ",";
+  json += "\"alpha\":" + String(A.emaAlpha, 3) + ",";
   json += "\"pulses\":" + String(pA);
   json += "},";
 
@@ -165,6 +181,7 @@ void handleData() {
   json += "\"w_win\":" + String(wattsWindowB, 1) + ",";
   json += "\"avg\":" + String(B.avgWatts, 1) + ",";
   json += "\"kwh\":" + String(totalKwh(B), 3) + ",";
+  json += "\"alpha\":" + String(B.emaAlpha, 3) + ",";
   json += "\"pulses\":" + String(pB);
   json += "}";
 
@@ -239,6 +256,8 @@ void setup() {
   B.avgWatts = 0;
   A.avgInit = false;
   B.avgInit = false;
+  A.emaAlpha = EMA_ALPHA_MIN;
+  B.emaAlpha = EMA_ALPHA_MIN;
 
   pinMode(PIN_A, INPUT_PULLUP);
   pinMode(PIN_B, INPUT_PULLUP);
