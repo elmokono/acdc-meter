@@ -13,16 +13,17 @@
 #define PIN_B D6
 
 #define PULSES_PER_KWH 2000.0
+#define WATTS_AVG_WINDOW_MS 30000
 #define WH_PER_PULSE (1000.0 / PULSES_PER_KWH)
 #define WATTS_WINDOW_MS 10000UL  // 10 segundos ventana
 
 #define SEND_INTERVAL_MS 15000
 #define EEPROM_SIZE 64
 
-#define EMA_ALPHA_MIN 0.05  // (consumo bajo → muy suave)
+#define EMA_ALPHA_MIN 0.2   // (consumo bajo → muy suave)
 #define EMA_ALPHA_MAX 0.35  // (consumo alto → más reactivo)
 
-#define EMA_WATTS_LOW 200.0     // (debajo de esto → alpha mínimo)
+#define EMA_WATTS_LOW 200.0    // (debajo de esto → alpha mínimo)
 #define EMA_WATTS_HIGH 3000.0  // (encima de esto → alpha máximo)
 
 unsigned long lastWattsWindowMs = 0;
@@ -50,6 +51,12 @@ struct Meter {
   float emaAlpha;  // (alpha dinámico actual)
 
   unsigned long lastCalc;
+  unsigned long windowStartMs;
+  unsigned long windowPulses;
+  unsigned long windowDurationMs;
+
+  unsigned long avgStartMs;
+  float avgEnergyWh;
 };
 
 /* ================= GLOBAL ================= */
@@ -62,10 +69,12 @@ PersistedData eep;
 /* ================= ISR ================= */
 ICACHE_RAM_ATTR void isrA() {
   A.pulses++;
+  A.windowPulses++;
 }
 
 ICACHE_RAM_ATTR void isrB() {
   B.pulses++;
+  B.windowPulses++;
 }
 
 uint32_t getPulsesSafe(Meter &m) {
@@ -73,6 +82,13 @@ uint32_t getPulsesSafe(Meter &m) {
   uint32_t p = m.pulses;
   interrupts();
   return p;
+}
+
+unsigned long selectWindowMs(unsigned long pulses) {
+  if (pulses <= 1) return 30000;
+  if (pulses <= 4) return 20000;
+  if (pulses <= 9) return 10000;
+  return 5000;
 }
 
 float computeDynamicAlpha(float watts) {  // 🔽 NUEVO
@@ -114,7 +130,36 @@ void updateMeter(Meter &m) {
   unsigned long now = millis();
   if (now - m.lastCalc < 1000) return;
 
-  uint32_t pulsesNow = getPulsesSafe(m);
+  unsigned long elapsed = now - m.windowStartMs;
+
+  if (elapsed >= m.windowDurationMs) {
+
+    m.windowDurationMs = selectWindowMs(m.windowPulses);
+
+    float hours = elapsed / 3600000.0;
+    float kwh = m.windowPulses / PULSES_PER_KWH;
+
+    float wattsInstant = (kwh / hours) * 1000.0;
+
+    // EMA suave encima (opcional pero recomendado)
+    m.watts = m.watts + m.emaAlpha * (wattsInstant - m.watts);
+
+    m.windowPulses = 0;
+    m.windowStartMs = now;
+
+    unsigned long nowMs = millis();
+    unsigned long dtMs = nowMs - m.avgStartMs;
+
+    if (dtMs >= WATTS_AVG_WINDOW_MS) {
+
+      m.avgWatts = (m.avgEnergyWh * 3600000.0) / dtMs;
+
+      m.avgEnergyWh = 0.0;
+      m.avgStartMs = nowMs;
+    }
+  }
+
+  /*uint32_t pulsesNow = getPulsesSafe(m);
 
   uint32_t diff = pulsesNow - m.lastPulses;
   m.lastPulses = pulsesNow;
@@ -129,7 +174,7 @@ void updateMeter(Meter &m) {
     //m.avgWatts = EMA_ALPHA * m.watts + (1.0 - EMA_ALPHA) * m.avgWatts;
     m.emaAlpha = computeDynamicAlpha(m.watts);
     m.avgWatts = m.avgWatts + m.emaAlpha * (m.watts - m.avgWatts);
-  }
+  }*/
 
   m.lastCalc = now;
 }
@@ -258,6 +303,16 @@ void setup() {
   B.avgInit = false;
   A.emaAlpha = EMA_ALPHA_MIN;
   B.emaAlpha = EMA_ALPHA_MIN;
+  A.windowStartMs = millis();
+  A.windowPulses = 0;
+  A.windowDurationMs = 30000;  // arranca conservador
+  B.windowStartMs = millis();
+  B.windowPulses = 0;
+  B.windowDurationMs = 30000;  // arranca conservador
+  A.avgStartMs = millis();
+  A.avgEnergyWh = 0.0;
+  B.avgStartMs = millis();
+  B.avgEnergyWh = 0.0;
 
   pinMode(PIN_A, INPUT_PULLUP);
   pinMode(PIN_B, INPUT_PULLUP);

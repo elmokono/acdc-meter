@@ -167,7 +167,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
           label: "Inst",
           data: [],
           borderColor: instColor,
-          borderWidth: 1,
+          borderWidth: 5,
           tension: 0.1,
           pointRadius: 0
         },
@@ -175,7 +175,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
           label: "Win",
           data: [],
           borderColor: winColor,
-          borderWidth: 5,
+          borderWidth: 1,
           tension: 0.3,
           pointRadius: 0
         },
