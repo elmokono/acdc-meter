@@ -95,7 +95,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <i class="fa-solid fa-house"></i> Vivienda A
       </h3>
       <canvas id="ca"></canvas>
-      kWh: <span id="ka">0</span>
+      Acumulado kWh: <b><span id="ka">0</span></b>
     </div>
 
     <div class="card">
@@ -103,7 +103,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <i class="fa-solid fa-house"></i> Vivienda B
       </h3>
       <canvas id="cb"></canvas>
-      kWh: <span id="kb">0</span>
+      Acumulado kWh: <b><span id="kb">0</span></b>
     </div>
   </div>
 
@@ -167,24 +167,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
           label: "Inst",
           data: [],
           borderColor: instColor,
-          borderWidth: 1,
-          tension: 0.1,
-          pointRadius: 0
-        },
-        {
-          label: "Win",
-          data: [],
-          borderColor: winColor,
           borderWidth: 5,
-          tension: 0.3,
-          pointRadius: 0
-        },
-        {
-          label: "Avg",
-          data: [],
-          borderColor: avgColor,
-          borderWidth: 1,
-          tension: 0.4,
+          tension: 0.1,
           pointRadius: 0
         }
       ];
@@ -194,8 +178,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       document.getElementById("ca").getContext("2d"),
       {
         type: "line",
-        data: { labels: [], datasets: baseDatasets("#bbdefb", "#1e88e5", "#0d47a1") },
-        options: { animation: false, plugins: { legend: { display: false } } }
+        data: { labels: [], datasets: baseDatasets("#0d47a1") },
+        options: { scales: { y: { beginAtZero: true, min: 0 } }, animation: false, plugins: { legend: { display: false } } }
       }
     );
 
@@ -203,8 +187,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       document.getElementById("cb").getContext("2d"),
       {
         type: "line",
-        data: { labels: [], datasets: baseDatasets("#ffe0b2", "#fb8c00", "#e65100") },
-        options: { animation: false, plugins: { legend: { display: false } } }
+        data: { labels: [], datasets: baseDatasets("#e65100") },
+        options: { scales: { y: { beginAtZero: true, min: 0 } }, animation: false, plugins: { legend: { display: false } } }
       }
     );
 
@@ -215,14 +199,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         data: {
           labels: [],
           datasets: [
-            ...baseDatasets("#bbdefb", "#1e88e5", "#0d47a1"),
-            ...baseDatasets("#ffe0b2", "#fb8c00", "#e65100")
+            ...baseDatasets("#0d47a1"),
+            ...baseDatasets("#e65100")
           ]
         },
         options: {
           animation: false,
           plugins: { legend: { position: "bottom" } },
-          scales: { y: { title: { display: true, text: "Watts" } } }
+          scales: { y: { beginAtZero: true, min: 0, title: { display: true, text: "Watts" } } }
         }
       }
     );
@@ -249,15 +233,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     setInterval(async () => {
       try {
-        const r = await fetch("http://192.168.0.24/data");
+        const r = await fetch("/data");
         if (!r.ok) return;
         const d = await r.json();
 
-        push(chartA, [d.A.w_inst, d.A.w_win, d.A.avg]);
-        push(chartB, [d.B.w_inst, d.B.w_win, d.B.avg]);
+        push(chartA, [d.A.w_inst]);
+        push(chartB, [d.B.w_inst]);
         push(chartAll, [
-          d.A.w_inst, d.A.w_win, d.A.avg,
-          d.B.w_inst, d.B.w_win, d.B.avg
+          d.A.w_inst,
+          d.B.w_inst
         ]);
 
         ka.textContent = d.A.kwh.toFixed(3);
