@@ -95,7 +95,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <i class="fa-solid fa-house"></i> Vivienda A
       </h3>
       <canvas id="ca"></canvas>
-      kWh: <span id="ka">0</span>
+      Acumulado kWh: <b><span id="ka">0</span></b>
     </div>
 
     <div class="card">
@@ -103,7 +103,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <i class="fa-solid fa-house"></i> Vivienda B
       </h3>
       <canvas id="cb"></canvas>
-      kWh: <span id="kb">0</span>
+      Acumulado kWh: <b><span id="kb">0</span></b>
     </div>
   </div>
 
@@ -179,7 +179,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       {
         type: "line",
         data: { labels: [], datasets: baseDatasets("#0d47a1") },
-        options: { animation: false, plugins: { legend: { display: false } } }
+        options: { scales: { y: { beginAtZero: true, min: 0 } }, animation: false, plugins: { legend: { display: false } } }
       }
     );
 
@@ -188,7 +188,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       {
         type: "line",
         data: { labels: [], datasets: baseDatasets("#e65100") },
-        options: { animation: false, plugins: { legend: { display: false } } }
+        options: { scales: { y: { beginAtZero: true, min: 0 } }, animation: false, plugins: { legend: { display: false } } }
       }
     );
 
@@ -206,7 +206,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         options: {
           animation: false,
           plugins: { legend: { position: "bottom" } },
-          scales: { y: { title: { display: true, text: "Watts" } } }
+          scales: { y: { beginAtZero: true, min: 0, title: { display: true, text: "Watts" } } }
         }
       }
     );
