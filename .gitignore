@@ -1,4 +1,4 @@
 acdc-meter/secrets.h
-acdc-meter/build/esp8266.esp8266.d1_mini_clone/acdc-meter.ino.bin
-acdc-meter/build/esp8266.esp8266.d1_mini_clone/acdc-meter.ino.elf
-acdc-meter/build/esp8266.esp8266.d1_mini_clone/acdc-meter.ino.map
+build/acdc-meter.ino.bin
+build/acdc-meter.ino.elf
+build/acdc-meter.ino.map
