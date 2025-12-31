@@ -1,0 +1,36 @@
+flowchart LR
+
+  subgraph Vivienda
+    M1[Pronext WA1102<br/>Meter A]
+    M2[Pronext WA1102<br/>Meter B]
+  end
+
+  subgraph Edge["ESP8266 (D1 Mini)"]
+    ESP[ACDC Meter Firmware<br/>- Pulses<br/>- Watts<br/>- kWh<br/>- OTA<br/>- Basic UI]
+  end
+
+  subgraph Cloud["ThingSpeak (Backup)"]
+    TS[(Time Series<br/>Cloud Backup)]
+  end
+
+  subgraph LAN["Mini PC (Linux)"]
+    INGEST[Ingest Script<br/>cron / systemd]
+    DB[(energy.db<br/>SQLite)]
+    ANALYSIS[Analysis Engine<br/>- Baseline<br/>- Events<br/>- Devices]
+    UI[Local Web UI<br/>Charts + Events]
+  end
+
+  %% Connections
+  M1 -->|Pulses| ESP
+  M2 -->|Pulses| ESP
+
+  ESP -->|HTTP /data<br/>near real-time| INGEST
+  INGEST -->|INSERT| DB
+
+  DB --> ANALYSIS
+  ANALYSIS --> DB
+
+  DB --> UI
+
+  ESP -->|15s HTTP| TS
+  TS -->|Recovery Sync| INGEST
