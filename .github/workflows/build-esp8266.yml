@@ -1,0 +1,41 @@
+name: Build ESP8266 Firmware
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP8266 core
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index
+          arduino-cli core install esp8266:esp8266
+
+      - name: Prepare secrets.h
+        run: |
+          cp secrets.h.example secrets.h
+
+      - name: Compile firmware
+        run: |
+          arduino-cli compile \
+            --fqbn esp8266:esp8266:d1_mini \
+            acdc-meter
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: acdc-meter-d1-mini-bin
+          path: |
+            **/*.bin
