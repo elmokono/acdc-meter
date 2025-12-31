@@ -13,7 +13,10 @@
                 "build",
                 "acdc-meter"
             ],
-            "group": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "problemMatcher": [],
             "presentation": {
                 "reveal": "always",
