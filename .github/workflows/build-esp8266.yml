@@ -30,7 +30,7 @@ jobs:
 
       - name: Prepare secrets.h
         run: |
-          cp secrets.h.example secrets.h
+          cp acdc-meter/secrets.h.example acdc-meter/secrets.h
           
       - name: Compile firmware (D1 Mini)
         run: |
