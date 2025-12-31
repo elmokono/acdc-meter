@@ -28,6 +28,10 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp8266:esp8266
 
+      - name: Prepare secrets.h
+        run: |
+          cp secrets.h.example secrets.h
+          
       - name: Compile firmware (D1 Mini)
         run: |
           arduino-cli compile \
