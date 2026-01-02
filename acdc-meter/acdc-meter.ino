@@ -79,12 +79,14 @@ uint32_t getPulsesSafe(Meter &m)
 
 unsigned long selectWindowMs(unsigned long pulses)
 {
-  if (pulses <= 1)
-    return 30000;
-  if (pulses <= 4)
-    return 20000;
-  if (pulses <= 9)
-    return 10000;
+  if (pulses == 0)
+    return 40000;
+  if (pulses <= 2)
+    return 25000;
+  if (pulses <= 6)
+    return 15000;
+  if (pulses <= 12)
+    return 8000;
   return 5000;
 }
 
