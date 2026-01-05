@@ -1,6 +1,6 @@
 #include "meter.h"
 #include "config.h"
-#include "storage.h" // reset functions persistirán
+#include "storage.h" // reset functions will persist
 
 Meter A, B;
 
@@ -26,7 +26,7 @@ unsigned long selectWindowMs(unsigned long pulses)
 }
 
 float computeDynamicAlpha(float watts)
-{ // 🔽 dinámico según potencia
+{ // 🔽 dynamic according to power
     if (watts <= EMA_WATTS_LOW)
         return EMA_ALPHA_MIN;
     if (watts >= EMA_WATTS_HIGH)
@@ -54,10 +54,10 @@ void updateMeter(Meter &m)
 
         float wattsInstant = (kwh / hours) * 1000.0;
 
-        // Actualiza alpha dinámico según potencia medida
+        // Update dynamic alpha according to measured power
         m.emaAlpha = computeDynamicAlpha(wattsInstant);
 
-        // EMA sobre la potencia
+        // EMA on power
         m.watts = m.watts + m.emaAlpha * (wattsInstant - m.watts);
 
         m.windowPulses = 0;
@@ -66,7 +66,6 @@ void updateMeter(Meter &m)
 
     m.lastCalc = now;
 }
-
 float totalKwh(Meter &m)
 {
     uint32_t p = getPulsesSafe(m);

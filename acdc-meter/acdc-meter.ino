@@ -19,7 +19,7 @@ unsigned long lastSend = 0;
 
 void setup()
 {
-  ESP.wdtEnable(8000); // 8 segundos
+  ESP.wdtEnable(8000); // 8 seconds
 
   Serial.begin(115200);
 
@@ -32,10 +32,10 @@ void setup()
   B.emaAlpha = EMA_ALPHA_MIN;
   A.windowStartMs = millis();
   A.windowPulses = 0;
-  A.windowDurationMs = 30000; // arranca conservador
+  A.windowDurationMs = 30000; // start conservatively
   B.windowStartMs = millis();
   B.windowPulses = 0;
-  B.windowDurationMs = 30000; // arranca conservador
+  B.windowDurationMs = 30000; // start conservatively
 
   pinMode(PIN_A, INPUT_PULLUP);
   pinMode(PIN_B, INPUT_PULLUP);
@@ -47,7 +47,6 @@ void setup()
 
   apiSetupRoutes(server);
 }
-
 void loop()
 {
   ArduinoOTA.handle();
@@ -60,7 +59,7 @@ void loop()
   {
     lastSend = millis();
     sendThingSpeak();
-    storageSave(); // persistencia segura
+    storageSave(); // safe persistence
   }
 
   yield();

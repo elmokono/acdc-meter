@@ -2,9 +2,9 @@
 
 #include "meter.h"
 
-// Persistencia
+// Persistence
 void storageLoad();
 void storageSave();
 
-// Acceso a los datos persistidos (si se necesita)
+// Access to persisted data (if needed)
 PersistedData storageGetPersisted();

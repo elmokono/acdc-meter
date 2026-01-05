@@ -18,7 +18,7 @@ struct Meter
 
     float offsetKwh;
     float watts;
-    float emaAlpha; // (alpha dinámico actual)
+    float emaAlpha; // (current dynamic alpha)
 
     unsigned long lastCalc;
     unsigned long windowStartMs;
