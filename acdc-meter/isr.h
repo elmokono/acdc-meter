@@ -1,7 +1,7 @@
 #pragma once
 #include "meter.h"
 
-// Las ISRs deben estar en RAM (ICACHE_RAM_ATTR)
+// ISRs must be in RAM (ICACHE_RAM_ATTR)
 ICACHE_RAM_ATTR void isrA()
 {
     A.pulses++;
