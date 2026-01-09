@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Energy Events</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: left
+        }
+
+        th {
+            background: #eee
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Eventos – últimas 24 hs</h2>
+
+    <label>Vivienda:</label>
+    <select id="home">
+        <option value="A">A</option>
+        <option value="B">B</option>
+    </select>
+
+    <table id="events">
+        <thead>
+            <tr>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Dispositivo</th>
+                <th>Duración (min)</th>
+                <th>Watts</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        async function loadEvents() {
+            const home = document.getElementById("home").value;
+            const r = await fetch(`/events?home=${home}`);
+            const data = await r.json();
+
+            const tb = document.querySelector("#events tbody");
+            tb.innerHTML = "";
+
+            data.forEach(e => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+      <td>${e.ts_start}</td>
+      <td>${e.ts_end}</td>
+      <td>${e.device}</td>
+      <td>${(e.duration_s / 60).toFixed(1)}</td>
+      <td>${e.watts_avg.toFixed(0)}</td>
+    `;
+                tb.appendChild(tr);
+            });
+        }
+
+        document.getElementById("home").addEventListener("change", loadEvents);
+        loadEvents();
+    </script>
+
+</body>
+
+</html>

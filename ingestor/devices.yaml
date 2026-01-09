@@ -1,0 +1,40 @@
+A:
+  - id: kettle
+    name: Pava eléctrica
+    type: step
+    min_w: 1400
+    max_w: 2800
+    min_dur: 30
+    max_dur: 180
+
+  - id: oven
+    name: Horno eléctrico
+    type: plateau
+    min_w: 1800
+    max_w: 3200
+    min_dur: 600
+    max_dur: 2400
+
+  - id: ac_inverter
+    name: Aire inverter
+    type: modulated
+    min_w: 250
+    max_w: 1500
+    min_dur: 900
+    max_dur: 14400
+B:
+  - id: kettle
+    name: Pava eléctrica
+    type: step
+    min_w: 1400
+    max_w: 2800
+    min_dur: 30
+    max_dur: 180
+
+  - id: oven
+    name: Horno eléctrico
+    type: plateau
+    min_w: 1800
+    max_w: 3200
+    min_dur: 600
+    max_dur: 2400
