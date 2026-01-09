@@ -22,6 +22,14 @@ A:
     max_w: 1500
     min_dur: 900
     max_dur: 14400
+
+  - id: tanque
+    name: Bomba tanque
+    type: tasmota
+    min_dur: 30
+    max_dur: 3600
+    url: http://tasmota-tanque/cm?cmnd=Power
+
 B:
   - id: kettle
     name: Pava eléctrica
@@ -38,3 +46,17 @@ B:
     max_w: 3200
     min_dur: 600
     max_dur: 2400
+
+  - id: tanque
+    name: Bomba tanque
+    type: tasmota
+    min_dur: 30
+    max_dur: 3600
+    url: http://192.168.0.5/cm?cmnd=Power
+  
+  - id: luces_parque
+    name: Luces parque
+    type: tasmota
+    min_dur: 30
+    max_dur: 3600
+    url: http://192.168.0.249/cm?cmnd=Power
