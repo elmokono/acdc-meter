@@ -1,0 +1,20 @@
+services:
+  ingestor:
+    build: .
+    container_name: acdc-ingestor
+    environment:
+      - ESP_URL=http://acdc-meter.local/data
+      - INTERVAL_SEC=10
+      - DB_PATH=/data/energy.db
+    volumes:
+      - ingestor_data:/data
+    restart: unless-stopped
+    networks:
+      - acdc
+
+volumes:
+  ingestor_data:
+
+networks:
+  acdc:
+    driver: bridge

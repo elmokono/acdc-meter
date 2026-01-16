@@ -5,10 +5,8 @@ import time
 import requests
 import sqlite3
 from datetime import datetime, timezone
-from dotenv import load_dotenv
 
 # ================= CONFIG =================
-load_dotenv("config.env")
 ESP_URL = os.getenv("ESP_URL")  # ej: http://192.168.1.50/data
 DB_PATH = os.getenv("DB_PATH", "energy.db")
 TIMEOUT = 5
@@ -51,4 +49,12 @@ def ingest_once():
 
 # ================= MAIN =================
 if __name__ == "__main__":
-    ingest_once()
+    interval = int(os.getenv("INTERVAL_SEC", "15"))
+    print(f"Running ingest.py every {interval} seconds")
+    while True:
+        try:
+            ingest_once()
+        except Exception as e:
+            print(f"[ERROR] {e}")
+        
+        time.sleep(interval)
