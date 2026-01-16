@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS metrics (
         b_w REAL,
         b_pulses REAL,
         b_kwh REAL
-    )
+    );
 
-CREATE INDEX IF NOT EXISTS idx_raw_ts ON raw_data(ts);
+CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(ts);

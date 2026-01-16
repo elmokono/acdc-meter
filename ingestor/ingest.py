@@ -14,26 +14,6 @@ TIMEOUT = 5
 if not ESP_URL:
     raise RuntimeError("ESP_URL no está definido")
 
-# ================= DB =================
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS metrics (
-        ts TEXT PRIMARY KEY,
-        a_w REAL,
-        a_pulses REAL,
-        a_kwh REAL,
-        b_w REAL,
-        b_pulses REAL,
-        b_kwh REAL
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
 # ================= INGEST =================
 def ingest_once():
     r = requests.get(ESP_URL, timeout=TIMEOUT)
@@ -69,5 +49,12 @@ def ingest_once():
 
 # ================= MAIN =================
 if __name__ == "__main__":
-    init_db()
-    ingest_once()
+    interval = int(os.getenv("INTERVAL_SEC", "15"))
+    print(f"Running ingest.py every {interval} seconds")
+    while True:
+        try:
+            ingest_once()
+        except Exception as e:
+            print(f"[ERROR] {e}")
+        
+        time.sleep(interval)
