@@ -2,8 +2,7 @@
 
 set -e
 
-export ESP_URL="http://acdc-meter.local/data"
-export DB_PATH="$HOME/energy-monitor/energy.db"
+source config.env
 
 cd "$HOME/energy-monitor"
 

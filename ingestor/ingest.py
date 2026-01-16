@@ -5,34 +5,16 @@ import time
 import requests
 import sqlite3
 from datetime import datetime, timezone
+from dotenv import load_dotenv
 
 # ================= CONFIG =================
+load_dotenv("config.env")
 ESP_URL = os.getenv("ESP_URL")  # ej: http://192.168.1.50/data
 DB_PATH = os.getenv("DB_PATH", "energy.db")
 TIMEOUT = 5
 
 if not ESP_URL:
     raise RuntimeError("ESP_URL no está definido")
-
-# ================= DB =================
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS metrics (
-        ts TEXT PRIMARY KEY,
-        a_w REAL,
-        a_pulses REAL,
-        a_kwh REAL,
-        b_w REAL,
-        b_pulses REAL,
-        b_kwh REAL
-    )
-    """)
-
-    conn.commit()
-    conn.close()
 
 # ================= INGEST =================
 def ingest_once():
@@ -69,5 +51,4 @@ def ingest_once():
 
 # ================= MAIN =================
 if __name__ == "__main__":
-    init_db()
     ingest_once()
